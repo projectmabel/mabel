@@ -13,10 +13,10 @@ class ConnectionManager:
         # Define action parameter requirements
         self.action_params = {
             "get-latest-tweets": {"required": ["username", "count"], "usage": "<username> <count>"},
-            "post-tweet": {"required": ["message"], "usage": "<message>"},
+            "post-tweet": {"required": ["message"], "usage": '"<message>"'},
             "like-tweet": {"required": ["tweet_id"], "usage": "<tweet_id>"},
-            "reply-to-tweet": {"required": ["tweet_id", "message"], "usage": "<tweet_id> <message>"},
-            "generate-text": {"required": ["prompt", "system_prompt", "model"], "usage": "<prompt> <system_prompt> <model>"},
+            "reply-to-tweet": {"required": ["tweet_id", "message"], "usage": '<tweet_id> "<message>"'},
+            "generate-text": {"required": ["prompt", "system_prompt", "model"], "usage": '"<prompt>" "<system_prompt>" <model>'},
             "check-model": {"required": ["model"], "usage": "<model>"},
             "list-models": {"required": [], "usage": ""}
         }
@@ -74,6 +74,39 @@ class ConnectionManager:
         except Exception as e:
             print(f"\nAn error occurred: {e}")
 
+    def _extract_quoted_text(self, args: list, start_index: int) -> tuple[str, int]:
+        if not args[start_index].startswith('"'):
+            raise ValueError(f"Text parameter must start with a quote")
+
+        # Handle single argument case
+        if args[start_index].endswith('"') and len(args[start_index]) > 1:
+            return args[start_index][1:-1], start_index + 1
+
+        # Multiple arguments case
+        text_parts = []
+        i = start_index
+        found_end_quote = False
+
+        while i < len(args):
+            part = args[i]
+            if i == start_index:
+                if len(part) <= 1:  # Just a quote
+                    text_parts.append("")
+                else:
+                    text_parts.append(part[1:])  # Remove starting quote
+            elif part.endswith('"'):
+                found_end_quote = True
+                text_parts.append(part[:-1])  # Remove ending quote
+                break
+            else:
+                text_parts.append(part)
+            i += 1
+
+        if not found_end_quote:
+            raise ValueError("No closing quote found for text parameter")
+
+        return " ".join(text_parts), i + 1
+
     def find_and_perform_action(self, action_string: str, connection_string: str, **kwargs):
         try:
             connection = self.connections[connection_string]
@@ -91,26 +124,24 @@ class ConnectionManager:
                     print(f"Usage: agent_action {connection_string} {action_string} {param_info.get('usage', '')}")
                     return None
 
-                # Handle parameters based on action requirements
-                if "count" in required:
+                # Process arguments
+                current_arg_index = 0
+                for param in required:
                     try:
-                        kwargs["count"] = int(args[required.index("count")])
-                    except ValueError:
-                        print("\nError: Count must be a number")
+                        if param in ["message", "prompt", "system_prompt"]:
+                            # Extract quoted text
+                            text, current_arg_index = self._extract_quoted_text(args, current_arg_index)
+                            kwargs[param] = text
+                        elif param == "count":
+                            kwargs[param] = int(args[current_arg_index])
+                            current_arg_index += 1
+                        else:
+                            kwargs[param] = args[current_arg_index]
+                            current_arg_index += 1
+                    except (ValueError, IndexError) as e:
+                        print(f"\nError processing {param}: {str(e)}")
+                        print(f"Usage: agent_action {connection_string} {action_string} {param_info.get('usage', '')}")
                         return None
-
-                if "message" in required:
-                    message_index = required.index("message")
-                    message_parts = args[message_index:] if message_index == len(required) - 1 else [args[message_index]]
-                    message = ' '.join(message_parts)
-                    if message.startswith('"') and message.endswith('"'):
-                        message = message[1:-1]
-                    kwargs["message"] = message
-
-                # Handle other parameters
-                for i, param in enumerate(required):
-                    if param not in ["message", "count"] and i < len(args):
-                        kwargs[param] = args[i]
 
             return connection.perform_action(action_string, **kwargs)
             
