@@ -37,6 +37,40 @@ class ZerePyAgent:
         # Load credentials to get user info
         load_dotenv()
         self.username = os.getenv('TWITTER_USERNAME', '').lower()
+        
+        # Cache for system prompt
+        self._system_prompt = None
+
+    def _construct_system_prompt(self) -> str:
+        if self._system_prompt is None:
+            prompt_parts = []
+            prompt_parts.extend(self.bio)
+            
+            if self.traits:
+                prompt_parts.append("\nYour key traits are:")
+                prompt_parts.extend(f"- {trait}" for trait in self.traits)
+            
+            if self.examples:
+                prompt_parts.append("\nHere are some examples of your style:")
+                prompt_parts.extend(f"- {example}" for example in self.examples)
+            
+            self._system_prompt = "\n".join(prompt_parts)
+        
+        return self._system_prompt
+
+    def reset_system_prompt(self):
+        self._system_prompt = None
+
+    def prompt_llm(self, prompt: str, custom_sys_prompt: str = None, **kwargs) -> str:
+        system_prompt = custom_sys_prompt if custom_sys_prompt else self._construct_system_prompt()
+        
+        return self.connection_manager.find_and_perform_action(
+            action_string="generate-text",
+            connection_string=self.model_provider,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            model=self.model,
+            **kwargs)
 
     def loop(self):
         """Main agent loop with hardcoded Twitter interactions"""
@@ -68,14 +102,8 @@ class ZerePyAgent:
                     print("\n📝 GENERATING NEW TWEET")
                     print_h_bar()
                     
-                    prompt = "Generate an engaging tweet about AI, technology, or programming. Include relevant hashtags. Keep it under 280 characters."
-                    tweet_text = self.connection_manager.find_and_perform_action(
-                        action_string="generate-text",
-                        connection_string=self.model_provider,
-                        prompt=prompt,
-                        system_prompt="\n".join(self.bio),
-                        model=self.model
-                    )
+                    prompt = "Generate an engaging tweet about AI, technology, or programming. Include at most one relevant hashtag, sometimes. Keep it under 280 characters."
+                    tweet_text = self.prompt_llm(prompt)
                     
                     if tweet_text:
                         print("\n🚀 Posting tweet:")
@@ -142,15 +170,8 @@ class ZerePyAgent:
                             print(f"\n💬 GENERATING REPLY")
                             print(f"To tweet: {tweet.get('text', '')[:50]}...")
                             
-                            # Generate reply using OpenAI
                             prompt = f"Generate a friendly, engaging reply to this tweet: '{tweet.get('text')}'. Keep it under 280 characters."
-                            reply_text = self.connection_manager.find_and_perform_action(
-                                action_string="generate-text",
-                                connection_string=self.model_provider,
-                                prompt=prompt,
-                                system_prompt="\n".join(self.bio),
-                                model=self.model
-                            )
+                            reply_text = self.prompt_llm(prompt)
                             
                             if reply_text:
                                 print(f"\n🚀 Posting reply:")
@@ -193,17 +214,6 @@ class ZerePyAgent:
             "loop_delay": self.loop_delay
         }
 
-    def prompt_llm(self, prompt, **kwargs):
-        # TODO: Create system prompt from agent bio, traits, examples
-        system_prompt = "You are a helpful assistant."
-        return self.connection_manager.find_and_perform_action(
-            action_string="generate-text",
-            connection_string=self.model_provider,
-            prompt=prompt,
-            system_prompt=system_prompt,
-            model=self.model,
-            **kwargs)
-
     def set_preferred_model(self, model):
         # Check if model is valid
         result = self.connection_manager.find_and_perform_action(
@@ -218,6 +228,7 @@ class ZerePyAgent:
 
     def set_preferred_model_provider(self, model_provider):
         self.model_provider = model_provider
+        self.reset_system_prompt()
 
     def list_available_models(self):
         self.connection_manager.find_and_perform_action(
