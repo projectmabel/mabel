@@ -73,13 +73,12 @@ class ZerePyAgent:
             **kwargs)
 
     def loop(self):
-        """Main agent loop with hardcoded Twitter interactions"""
         # Configurable behavior weights
         TWEET_INTERVAL = 300  # Post new tweet every 5 minutes
         INTERACTION_WEIGHTS = {
-            'nothing': 0.5,  # 50% chance to do nothing
-            'like': 0.25,     # 25% chance to like
-            'reply': 0.25     # 25% chance to reply
+            'nothing': 0.42,  # 42% chance to do nothing
+            'like': 0.2,    # 20% chance to like
+            'reply': 0.38    # 38% chance to reply
         }
         SELF_REPLY_CHANCE = 0.05  # Very low chance to reply to own tweets
         
@@ -139,7 +138,7 @@ class ZerePyAgent:
                         # Check if it's our own tweet
                         is_own_tweet = tweet.get('author_username', '').lower() == self.username
 
-                        # Skip most self-interactions
+                        # For own tweets, only interact based on self-reply chance
                         if is_own_tweet and random.random() > SELF_REPLY_CHANCE:
                             continue
 
@@ -148,10 +147,6 @@ class ZerePyAgent:
                             list(INTERACTION_WEIGHTS.keys()),
                             weights=list(INTERACTION_WEIGHTS.values())
                         )[0]
-
-                        # For own tweets, downgrade replies to likes
-                        if is_own_tweet and action == 'reply':
-                            action = 'like'
                             
                         # Perform chosen action
                         if action == 'like':
@@ -170,8 +165,13 @@ class ZerePyAgent:
                             print(f"\n💬 GENERATING REPLY")
                             print(f"To tweet: {tweet.get('text', '')[:50]}...")
                             
-                            prompt = f"Generate a friendly, engaging reply to this tweet: '{tweet.get('text')}'. Keep it under 280 characters."
-                            reply_text = self.prompt_llm(prompt)
+                            # Customize prompt based on whether it's a self-reply
+                            base_prompt = f"Generate a friendly, engaging reply to this tweet: '{tweet.get('text')}'. Keep it under 280 characters."
+                            if is_own_tweet:
+                                system_prompt = self._construct_system_prompt() + "\n\nYou are replying to your own previous tweet. Stay in character while building on your earlier thought or adding relevant context."
+                                reply_text = self.prompt_llm(base_prompt, custom_sys_prompt=system_prompt)
+                            else:
+                                reply_text = self.prompt_llm(base_prompt)
                             
                             if reply_text:
                                 print(f"\n🚀 Posting reply:")
