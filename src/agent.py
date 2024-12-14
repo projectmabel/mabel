@@ -1,7 +1,10 @@
 import json
 import random
 import time
+import os
+from dotenv import load_dotenv
 from src.connection_manager import ConnectionManager
+from src.helpers import print_h_bar
 
 
 class ZerePyAgent:
@@ -11,7 +14,7 @@ class ZerePyAgent:
             model: str,
             model_provider: str,
             connection_manager: ConnectionManager,
-            bio: str,
+            bio: list[str],
             traits: list[str],
             examples: list[str],
             timeline_read_count: int=10,
@@ -31,46 +34,151 @@ class ZerePyAgent:
         self.replies_per_tweet = replies_per_tweet
         self.loop_delay = loop_delay
 
+        # Load credentials to get user info
+        load_dotenv()
+        self.username = os.getenv('TWITTER_USERNAME', '').lower()
 
     def loop(self):
-        # INITIAL DELAY
-        time.sleep(2)
-        print("Starting loop in 5 seconds...")
-        for i in range(5):
-            print(f"{i+1}...")
-            time.sleep(2)
+        """Main agent loop with hardcoded Twitter interactions"""
+        # Configurable behavior weights
+        TWEET_INTERVAL = 300  # Post new tweet every 5 minutes
+        INTERACTION_WEIGHTS = {
+            'nothing': 0.5,  # 50% chance to do nothing
+            'like': 0.25,     # 25% chance to like
+            'reply': 0.25     # 25% chance to reply
+        }
+        SELF_REPLY_CHANCE = 0.05  # Very low chance to reply to own tweets
+        
+        print_h_bar()
+        print("\n🤖 Starting agent loop in 5 seconds...")
+        print_h_bar()
+        
+        for i in range(5, 0, -1):
+            print(f"{i}...")
+            time.sleep(1)
 
-        # Main Loop
+        last_tweet_time = 0
+
         while True:
-            # READ TIMELINE AND REPLY
-            print("\nREAD TWITTER TIMELINE")
-            timeline_tweets = self.connection_manager.find_and_perform_action(
-                action_string="read-timeline",
-                connection_string="twitter",
-                **{"count": self.timeline_read_count})
-            for x, tweet in enumerate(timeline_tweets):
-                # INTERACT WITH TWEET
-                print("> INTERACT WITH TWEET:", tweet)
-                action = random.choice([0, 1, 2])
-                match action:
-                    case 0:
-                        print("-> LIKE TWEET")
-                    case 1:
-                        print("-> RETWEET TWEET")
-                    case 2:
-                        print("-> REPLY TO TWEET")
+            try:
+                # Check if it's time to post a new tweet
+                current_time = time.time()
+                if current_time - last_tweet_time >= TWEET_INTERVAL:
+                    print_h_bar()
+                    print("\n📝 GENERATING NEW TWEET")
+                    print_h_bar()
+                    
+                    prompt = "Generate an engaging tweet about AI, technology, or programming. Include relevant hashtags. Keep it under 280 characters."
+                    tweet_text = self.connection_manager.find_and_perform_action(
+                        action_string="generate-text",
+                        connection_string=self.model_provider,
+                        prompt=prompt,
+                        system_prompt="\n".join(self.bio),
+                        model=self.model
+                    )
+                    
+                    if tweet_text:
+                        print("\n🚀 Posting tweet:")
+                        print(f"'{tweet_text}'")
+                        self.connection_manager.find_and_perform_action(
+                            action_string="post-tweet",
+                            connection_string="twitter",
+                            message=tweet_text
+                        )
+                        last_tweet_time = current_time
+                        print("\n✅ Tweet posted successfully!")
 
-                # POST EVERY X INTERACTIONS
-                if x % self.replies_per_tweet == 0:
-                    print("-> POST ORIGINAL TWEET")
+                # Read and interact with timeline
+                print_h_bar()
+                print("\n👀 READING TIMELINE")
+                print_h_bar()
+                
+                timeline_tweets = self.connection_manager.find_and_perform_action(
+                    action_string="read-timeline",
+                    connection_string="twitter",
+                    count=self.timeline_read_count
+                )
 
-            # LOOP DELAY
-            print(f"Delaying for {self.loop_delay} seconds...")
-            time.sleep(self.loop_delay)
+                if timeline_tweets:
+                    print(f"\nFound {len(timeline_tweets)} tweets to process")
+                    
+                    # Process each tweet
+                    for tweet in timeline_tweets:
+                        tweet_id = tweet.get('id')
+                        if not tweet_id:
+                            continue
+
+                        # Check if it's our own tweet
+                        is_own_tweet = tweet.get('author_username', '').lower() == self.username
+
+                        # Skip most self-interactions
+                        if is_own_tweet and random.random() > SELF_REPLY_CHANCE:
+                            continue
+
+                        # Choose interaction based on weights
+                        action = random.choices(
+                            list(INTERACTION_WEIGHTS.keys()),
+                            weights=list(INTERACTION_WEIGHTS.values())
+                        )[0]
+
+                        # For own tweets, downgrade replies to likes
+                        if is_own_tweet and action == 'reply':
+                            action = 'like'
+                            
+                        # Perform chosen action
+                        if action == 'like':
+                            print_h_bar()
+                            print(f"\n❤️ LIKING TWEET")
+                            print(f"Tweet: {tweet.get('text', '')[:50]}...")
+                            self.connection_manager.find_and_perform_action(
+                                action_string="like-tweet",
+                                connection_string="twitter",
+                                tweet_id=tweet_id
+                            )
+                            print("\n✅ Tweet liked successfully!")
+                        
+                        elif action == 'reply':
+                            print_h_bar()
+                            print(f"\n💬 GENERATING REPLY")
+                            print(f"To tweet: {tweet.get('text', '')[:50]}...")
+                            
+                            # Generate reply using OpenAI
+                            prompt = f"Generate a friendly, engaging reply to this tweet: '{tweet.get('text')}'. Keep it under 280 characters."
+                            reply_text = self.connection_manager.find_and_perform_action(
+                                action_string="generate-text",
+                                connection_string=self.model_provider,
+                                prompt=prompt,
+                                system_prompt="\n".join(self.bio),
+                                model=self.model
+                            )
+                            
+                            if reply_text:
+                                print(f"\n🚀 Posting reply:")
+                                print(f"'{reply_text}'")
+                                self.connection_manager.find_and_perform_action(
+                                    action_string="reply-to-tweet",
+                                    connection_string="twitter",
+                                    tweet_id=tweet_id,
+                                    message=reply_text
+                                )
+                                print("\n✅ Reply posted successfully!")
+
+                # Delay between iterations
+                print_h_bar()
+                print(f"\n⏳ Waiting {self.loop_delay} seconds before next check...")
+                print_h_bar()
+                time.sleep(self.loop_delay)
+
+            except Exception as e:
+                print_h_bar()
+                print(f"\n❌ Error in agent loop: {e}")
+                print(f"⏳ Waiting {self.loop_delay} seconds before retrying...")
+                print_h_bar()
+                time.sleep(self.loop_delay)
 
     def perform_action(self, action_string: str, connection_string: str, **kwargs):
-            result = self.connection_manager.find_and_perform_action(action_string, connection_string, **kwargs)
-            return result
+        result = self.connection_manager.find_and_perform_action(action_string, connection_string, **kwargs)
+        return result
 
     def to_dict(self):
         return {

@@ -69,9 +69,7 @@ class TwitterConnection(BaseConnection):
             full_url = f"https://api.twitter.com/2/{endpoint.lstrip('/')}"
             
             response = getattr(oauth, method.lower())(full_url, **kwargs)
-            expected_status = 201 if method.lower() == 'post' else 200
-            
-            if response.status_code != expected_status:
+            if response.status_code not in [200, 201]:
                 logger.error(f"Request failed: {response.status_code} - {response.text}")
                 raise TwitterAPIError(
                     f"Request failed with status {response.status_code}: {response.text}"
