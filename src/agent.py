@@ -8,19 +8,18 @@ from src.helpers import print_h_bar
 
 
 class ZerePyAgent:
-    def __init__(
-            self,
-            name: str,
-            model: str,
-            model_provider: str,
-            connection_manager: ConnectionManager,
-            bio: list[str],
-            traits: list[str],
-            examples: list[str],
-            timeline_read_count: int=10,
-            replies_per_tweet: int=5,
-            loop_delay: int=30
-    ):
+
+    def __init__(self,
+                 name: str,
+                 model: str,
+                 model_provider: str,
+                 connection_manager: ConnectionManager,
+                 bio: list[str],
+                 traits: list[str],
+                 examples: list[str],
+                 timeline_read_count: int = 10,
+                 replies_per_tweet: int = 5,
+                 loop_delay: int = 30):
         self.name = name
         self.model = model
         self.model_provider = model_provider
@@ -37,7 +36,7 @@ class ZerePyAgent:
         # Load credentials to get user info
         load_dotenv()
         self.username = os.getenv('TWITTER_USERNAME', '').lower()
-        
+
         # Cache for system prompt
         self._system_prompt = None
 
@@ -45,25 +44,32 @@ class ZerePyAgent:
         if self._system_prompt is None:
             prompt_parts = []
             prompt_parts.extend(self.bio)
-            
+
             if self.traits:
                 prompt_parts.append("\nYour key traits are:")
                 prompt_parts.extend(f"- {trait}" for trait in self.traits)
-            
+
             if self.examples:
-                prompt_parts.append("\nHere are some examples of your style:")
-                prompt_parts.extend(f"- {example}" for example in self.examples)
-            
+                prompt_parts.append(
+                    "\nHere are some examples of your style (Please avoid repeating any of these):"
+                )
+                prompt_parts.extend(f"- {example}"
+                                    for example in self.examples)
+
             self._system_prompt = "\n".join(prompt_parts)
-        
+
         return self._system_prompt
 
     def reset_system_prompt(self):
         self._system_prompt = None
 
-    def prompt_llm(self, prompt: str, custom_sys_prompt: str = None, **kwargs) -> str:
-        system_prompt = custom_sys_prompt if custom_sys_prompt else self._construct_system_prompt()
-        
+    def prompt_llm(self,
+                   prompt: str,
+                   custom_sys_prompt: str = None,
+                   **kwargs) -> str:
+        system_prompt = custom_sys_prompt if custom_sys_prompt else self._construct_system_prompt(
+        )
+
         return self.connection_manager.find_and_perform_action(
             action_string="generate-text",
             connection_string=self.model_provider,
@@ -74,18 +80,17 @@ class ZerePyAgent:
 
     def loop(self):
         # Configurable behavior weights
-        TWEET_INTERVAL = 300  # Post new tweet every 5 minutes
+        TWEET_INTERVAL = 900  # Post new tweet every 5 minutes
         INTERACTION_WEIGHTS = {
-            'nothing': 0.42,  # 42% chance to do nothing
-            'like': 0.2,    # 20% chance to like
-            'reply': 0.38    # 38% chance to reply
+            'like': 0.2,  # 20% chance to like
+            'reply': 0.8  # 80% chance to reply
         }
         SELF_REPLY_CHANCE = 0.05  # Very low chance to reply to own tweets
-        
+
         print_h_bar()
         print("\n🤖 Starting agent loop in 5 seconds...")
         print_h_bar()
-        
+
         for i in range(5, 0, -1):
             print(f"{i}...")
             time.sleep(1)
@@ -100,18 +105,17 @@ class ZerePyAgent:
                     print_h_bar()
                     print("\n📝 GENERATING NEW TWEET")
                     print_h_bar()
-                    
-                    prompt = "Generate an engaging tweet about AI, technology, or programming. Include at most one relevant hashtag, sometimes. Keep it under 280 characters."
+
+                    prompt = "Generate an engaging tweet. Don't include any hashtags, links or emojis. Keep it under 280 characters. The tweets should be pure commentary, do not shill any coins or projects apart from Blormmy. Not repeat any of the tweets that were given as example. Avoid the words AI and crypto."
                     tweet_text = self.prompt_llm(prompt)
-                    
+
                     if tweet_text:
                         print("\n🚀 Posting tweet:")
                         print(f"'{tweet_text}'")
                         self.connection_manager.find_and_perform_action(
                             action_string="post-tweet",
                             connection_string="twitter",
-                            message=tweet_text
-                        )
+                            message=tweet_text)
                         last_tweet_time = current_time
                         print("\n✅ Tweet posted successfully!")
 
@@ -119,16 +123,16 @@ class ZerePyAgent:
                 print_h_bar()
                 print("\n👀 READING TIMELINE")
                 print_h_bar()
-                
+
                 timeline_tweets = self.connection_manager.find_and_perform_action(
                     action_string="read-timeline",
                     connection_string="twitter",
-                    count=self.timeline_read_count
-                )
+                    count=self.timeline_read_count)
+                print(timeline_tweets)
 
                 if timeline_tweets:
                     print(f"\nFound {len(timeline_tweets)} tweets to process")
-                    
+                    time.sleep(30)
                     # Process each tweet
                     for tweet in timeline_tweets:
                         tweet_id = tweet.get('id')
@@ -136,18 +140,19 @@ class ZerePyAgent:
                             continue
 
                         # Check if it's our own tweet
-                        is_own_tweet = tweet.get('author_username', '').lower() == self.username
+                        is_own_tweet = tweet.get('author_username',
+                                                 '').lower() == self.username
 
                         # For own tweets, only interact based on self-reply chance
-                        if is_own_tweet and random.random() > SELF_REPLY_CHANCE:
+                        if is_own_tweet and random.random(
+                        ) > SELF_REPLY_CHANCE:
                             continue
 
                         # Choose interaction based on weights
                         action = random.choices(
                             list(INTERACTION_WEIGHTS.keys()),
-                            weights=list(INTERACTION_WEIGHTS.values())
-                        )[0]
-                            
+                            weights=list(INTERACTION_WEIGHTS.values()))[0]
+
                         # Perform chosen action
                         if action == 'like':
                             print_h_bar()
@@ -156,23 +161,25 @@ class ZerePyAgent:
                             self.connection_manager.find_and_perform_action(
                                 action_string="like-tweet",
                                 connection_string="twitter",
-                                tweet_id=tweet_id
-                            )
+                                tweet_id=tweet_id)
                             print("\n✅ Tweet liked successfully!")
-                        
+
                         elif action == 'reply':
                             print_h_bar()
                             print(f"\n💬 GENERATING REPLY")
                             print(f"To tweet: {tweet.get('text', '')[:50]}...")
-                            
+
                             # Customize prompt based on whether it's a self-reply
                             base_prompt = f"Generate a friendly, engaging reply to this tweet: '{tweet.get('text')}'. Keep it under 280 characters."
                             if is_own_tweet:
-                                system_prompt = self._construct_system_prompt() + "\n\nYou are replying to your own previous tweet. Stay in character while building on your earlier thought or adding relevant context."
-                                reply_text = self.prompt_llm(base_prompt, custom_sys_prompt=system_prompt)
+                                system_prompt = self._construct_system_prompt(
+                                ) + "\n\nYou are replying to your own previous tweet. Stay in character while building on your earlier thought or adding relevant context."
+                                reply_text = self.prompt_llm(
+                                    base_prompt,
+                                    custom_sys_prompt=system_prompt)
                             else:
                                 reply_text = self.prompt_llm(base_prompt)
-                            
+
                             if reply_text:
                                 print(f"\n🚀 Posting reply:")
                                 print(f"'{reply_text}'")
@@ -180,25 +187,29 @@ class ZerePyAgent:
                                     action_string="reply-to-tweet",
                                     connection_string="twitter",
                                     tweet_id=tweet_id,
-                                    message=reply_text
-                                )
+                                    message=reply_text)
                                 print("\n✅ Reply posted successfully!")
 
                 # Delay between iterations
                 print_h_bar()
-                print(f"\n⏳ Waiting {self.loop_delay} seconds before next check...")
+                print(
+                    f"\n⏳ Waiting {self.loop_delay} seconds before next check..."
+                )
                 print_h_bar()
-                time.sleep(self.loop_delay)
+                time.sleep(self.loop_delay * 60)
 
             except Exception as e:
                 print_h_bar()
                 print(f"\n❌ Error in agent loop: {e}")
-                print(f"⏳ Waiting {self.loop_delay} seconds before retrying...")
+                print(
+                    f"⏳ Waiting {self.loop_delay} seconds before retrying...")
                 print_h_bar()
                 time.sleep(self.loop_delay)
 
-    def perform_action(self, action_string: str, connection_string: str, **kwargs):
-        result = self.connection_manager.find_and_perform_action(action_string, connection_string, **kwargs)
+    def perform_action(self, action_string: str, connection_string: str,
+                       **kwargs):
+        result = self.connection_manager.find_and_perform_action(
+            action_string, connection_string, **kwargs)
         return result
 
     def to_dict(self):
@@ -232,11 +243,11 @@ class ZerePyAgent:
 
     def list_available_models(self):
         self.connection_manager.find_and_perform_action(
-            action_string="list-models",
-            connection_string=self.model_provider)
+            action_string="list-models", connection_string=self.model_provider)
 
 
-def load_agent_from_file(agent_path: str, connection_manager: ConnectionManager) -> ZerePyAgent:
+def load_agent_from_file(agent_path: str,
+                         connection_manager: ConnectionManager) -> ZerePyAgent:
     try:
         # Get agent fields from json file
         agent_dict = json.load(open(agent_path, "r"))
@@ -252,8 +263,7 @@ def load_agent_from_file(agent_path: str, connection_manager: ConnectionManager)
             examples=agent_dict["examples"],
             timeline_read_count=agent_dict["timeline_read_count"],
             replies_per_tweet=agent_dict["replies_per_tweet"],
-            loop_delay=agent_dict["loop_delay"]
-        )
+            loop_delay=agent_dict["loop_delay"])
     except FileNotFoundError:
         raise FileNotFoundError(f"Agent file not found at path: {agent_path}")
     except KeyError:
@@ -270,4 +280,5 @@ def create_agent_file_from_dict(agent_dict: dict):
             # Save agent dict to json file
             json.dump(agent_dict, file, indent=4)
     except Exception as e:
-        raise Exception(f"An error occurred while creating the agent file: {e}")
+        raise Exception(
+            f"An error occurred while creating the agent file: {e}")
