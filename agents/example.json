@@ -15,7 +15,7 @@
     "This is an example tweet.",
     "This is another example tweet."
   ],
-  "loop_delay": 60,
+  "loop_delay": 300,
   "config": [
     {
       "name": "twitter",
