@@ -147,7 +147,7 @@ class ZerePyAgent:
                     if action_name == "post-tweet":
                         # Check if it's time to post a new tweet
                         current_time = time.time()
-                        interval = self.tweet_interval if self.tweet_interval != "random" else random.randint(10, 1800)
+                        interval = self.tweet_interval if self.tweet_interval != "random" else random.randint(300, 1800) # 5-30 minutes
                         if current_time - last_tweet_time >= interval:
                             logger.info("\n📝 GENERATING NEW TWEET")
                             print_h_bar()
