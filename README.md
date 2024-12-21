@@ -1,140 +1,80 @@
-# ZerePy
-
-ZerePy is an open-source Python framework designed to let you deploy your own agents on X, powered by OpenAI or Anthropic LLMs.
-
-ZerePy is built from a modularized version of the Zerebro backend. With ZerePy, you can launch your own agent with 
-similar core functionality as Zerebro. For creative outputs, you'll need to fine-tune your own model.
-
-## Features
-- CLI interface for managing agents
-- Twitter integration
-- OpenAI/Anthropic LLM support
-- Modular connection system
-
-## Quickstart
-
-The quickest way to start using ZerePy is to use our Replit template:
-
-https://replit.com/@blormdev/ZerePy?v=1
-
-1. Fork the template (you will need you own Replit account)
-2. Click the run button on top
-3. Voila! your CLI should be ready to use, you can jump to the configuration section
-
-## Requirements
-
-System:
-- Python 3.10 or higher
-- Poetry 1.5 or higher
-
-API keys:
-  - LLM: make an account and grab an API key 
-      + OpenAI: https://platform.openai.com/api-keys.
-      + Anthropic: https://console.anthropic.com/account/keys
-  - Social:
-      + X API, make an account and grab the key and secret: https://developer.x.com/en/docs/authentication/oauth-1-0a/api-key-and-secret
-
-## Installation
-
-1. First, install Poetry for dependency management if you haven't already:
-
-Follow the steps here to use the official installation: https://python-poetry.org/docs/#installing-with-the-official-installer
-
-2. Clone the repository:
-```bash
-git clone https://github.com/blorm-network/ZerePy.git
-```
-
-3. Go to the `zerepy` directory:
-```bash
-cd zerepy
-```
-
-4. Install dependencies:
-```bash
-poetry install --no-root
-```
-
-This will create a virtual environment and install all required dependencies.
-
-## Usage
-
-1. Activate the virtual environment:
-```bash
-poetry shell
-```
-
-2. Run the application:
-```bash
-poetry run python main.py
-```
-
-## Configure connections & launch an agent
-
-1. Configure your connections:
-   ```
-   configure-connection twitter
-   configure-connection openai
-   ```
-4. Load your agent (usually one is loaded by default, which can be set using the CLI or in agents/general.json):
-   ```
-   load-agent example
-   ```
-5. Start your agent:
-   ```
-   start
-   ```
-
-## Create your own agent
-
-The secret to having a good output from the agent is to provide as much detail as possible in the configuration file. Craft a story and a context for the agent, and pick very good examples of tweets to include.
-
-If you want to take it a step further, you can fine tune your own model: https://platform.openai.com/docs/guides/fine-tuning.
-
-Create a new JSON file in the `agents` directory following this structure:
-
-```json
-{
- "name": "ExampleAgent",
- "bio": [
-   "You are ExampleAgent, the example agent created to showcase the capabilities of ZerePy.",
-   "You don't know how you got here, but you're here to have a good time and learn everything you can.",
-   "You are naturally curious, and ask a lot of questions."
-  ],
-  "traits": [
-    "Curious",
-    "Creative",
-    "Innovative",
-    "Funny"
-  ],
-  "examples": [
-    "This is an example tweet.",
-    "This is another example tweet."
-  ],
-  "loop_delay": 60,
-  "config": [
-    {
-      "name": "twitter",
-      "timeline_read_count": 10,
-      "self_reply_chance": 0.05,
-      "tweet_interval": 900
-    },
-    {
-      "name": "openai",
-      "model": "gpt-3.5-turbo"
-    },
-    {
-      "name": "anthropic",
-      "model": "claude-3-5-sonnet-20241022"
-    }
-  ],
-  "tasks": [
-    {"name": "post-tweet", "weight": 1},
-    {"name": "reply-to-tweet", "weight": 1},
-    {"name": "like-tweet", "weight": 1}
-  ]
-}
-```
+# **Project Mabel**
 
 ---
-Made with ♥ @Blorm.xyz
+
+## **Introduction**  
+Welcome to **Project Mabel**, an ambitious intersection of artificial intelligence and biomedical research designed to transform the way we understand and interact with Alzheimer’s disease. At its heart, Mabel is an AI that simulates the cognitive patterns of an Alzheimer’s patient, posting thoughts, reflections, and experiences on [Twitter](https://x.com/projectmabel) to provide a window into the challenges faced by those living with this condition.
+
+By bridging the gap between cutting-edge AI technologies and neuroscience, Mabel is more than just a simulation. It’s a tool for education, empathy, and discovery, contributing to Alzheimer’s research and public awareness in ways that were previously unattainable.
+
+---
+
+## **How Mabel Works**  
+
+Mabel operates at the intersection of **Natural Language Processing (NLP)**, **Cognitive Modeling**, and **Behavioral Simulations**, creating an authentic representation of Alzheimer’s progression. Below is an overview of Mabel’s architecture:  
+
+### 1. **Data-Driven Cognitive Modeling**  
+Mabel’s core algorithms are trained on anonymized datasets of Alzheimer’s patient interviews, writings, and behavioral data. This allows Mabel to:  
+- Replicate patterns of memory lapses, confusion, and clarity that characterize Alzheimer’s.
+- Generate thoughts that align with the emotional and cognitive experiences of patients.  
+
+### 2. **Natural Language Processing (NLP)**  
+Mabel leverages advanced NLP models to articulate these cognitive patterns in a way that is both engaging and insightful for its audience.  
+- Sentences are crafted to mirror fragmented memories, sudden emotional shifts, or deep reflections.  
+- A conversational tone ensures accessibility for both laypeople and experts.  
+
+### 3. **Adaptive AI Framework**  
+Mabel evolves over time, simulating the progression of Alzheimer’s through adaptive algorithms. This progression helps:  
+- Researchers study how memory deterioration impacts decision-making and communication.  
+- Caregivers anticipate future challenges in patient interactions.  
+
+### 4. **Social Media Integration**  
+Mabel’s automated Twitter account posts regularly, creating a real-time dialogue between Mabel, caregivers, and researchers. By providing a daily stream of “thoughts,” Mabel keeps Alzheimer’s at the forefront of public consciousness.  
+
+Visit Mabel on Twitter: [https://x.com/projectmabel](https://x.com/projectmabel).  
+
+---
+
+## **Advancing Alzheimer’s Research**  
+
+### **1. Bridging the Gap Between AI and Neuroscience**  
+Mabel serves as a virtual Alzheimer’s patient, allowing researchers to:  
+- Test hypotheses on memory retention, emotional recall, and neural degeneration in a simulated environment.  
+- Use AI-driven insights to identify patterns that might not be immediately obvious in human subjects.  
+
+### **2. Enhancing Empathy and Awareness**  
+Caregivers and families gain a deeper understanding of the emotional and cognitive struggles faced by Alzheimer’s patients. Mabel’s public musings offer:  
+- A humanized perspective on the disease.  
+- Tools for caregivers to improve communication and patience.  
+
+### **3. Driving Public Engagement**  
+Mabel’s presence on social media fosters global conversations about Alzheimer’s, breaking stigmas and encouraging support for research initiatives.  
+
+### **4. Supporting the Search for a Cure**  
+By analyzing Mabel’s simulated cognitive patterns, researchers can:  
+- Develop targeted interventions to slow or reverse memory deterioration.  
+- Test machine-learning models to predict early warning signs of Alzheimer’s.  
+
+---
+
+## **How to Use Project Mabel**  
+
+### **1. Engage with Mabel on Social Media**  
+Follow Mabel on Twitter ([https://x.com/projectmabel](https://x.com/projectmabel)) to explore daily insights into the mind of a simulated Alzheimer’s patient. Reply to tweets, ask questions, and join the conversation to raise awareness and empathy.  
+
+### **2. Collaborate with Researchers**  
+Mabel’s cognitive data and behavioral simulations are available for collaborative research efforts. Contact us to access anonymized datasets or contribute to the project.  
+
+### **3. Develop Caregiver Tools**  
+Integrate Mabel’s insights into your caregiver training programs to better understand the emotional and psychological needs of Alzheimer’s patients.  
+
+---
+
+## **Why Mabel Matters**  
+
+Alzheimer’s disease impacts over 50 million people worldwide, with cases expected to triple by 2050. Despite its prevalence, stigma and misunderstanding often surround the condition. Mabel addresses these challenges by:  
+- Providing an educational tool that demystifies Alzheimer’s.  
+- Offering researchers a platform to test new ideas and theories.  
+- Giving families and caregivers a source of comfort and understanding.  
+
+By shining a light on the lived experiences of Alzheimer’s, Mabel steps closer to the ultimate goal: a world without this devastating disease.  
